@@ -2,38 +2,31 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Core Brand Palette
-val MidnightPurple = Color(0xFF160D2B)
-val DarkNavy = Color(0xFF090B19)
-val DeepSurface = Color(0xFF1E1438)
-val ElevatedGlass = Color(0xFF281B4A)
-val GlassBorder = Color(0x558B5CFF)
-val SoftGlassWhite = Color(0x1AF8F7FF)
+// BetZone X Signature Dark Palette
+val DeepBlack = Color(0xFF050814)
+val DeepNavy = Color(0xFF090F24)
+val NavySurface = Color(0xFF101935)
+val NavyCard = Color(0xFF152247)
+val NavyBorder = Color(0xFF263B70)
 
-val ElectricViolet = Color(0xFF8B5CFF)
-val NeonPink = Color(0xFFFF4FA3)
-val RoyalBlue = Color(0xFF4169FF)
-val SoftWhite = Color(0xFFF8F7FF)
-val MutedLavender = Color(0xFFB5AED6)
-val SubtleSlate = Color(0xFF7D76A3)
-val GoldenGlow = Color(0xFFFFD36E)
+// Brand Accents
+val ElectricBlue = Color(0xFF00A3FF)
+val RoyalElectricBlue = Color(0xFF2962FF)
+val NeonGreen = Color(0xFF00E676)
+val GoldenYellow = Color(0xFFFFD600)
+val LiveCrimson = Color(0xFFFF3D57)
 
-// Status & Semantic Tokens
-val EmeraldOnline = Color(0xFF2EE59D)
-val AmberBusy = Color(0xFFFFB020)
-val CrimsonAlert = Color(0xFFFF4D6D)
-val CyanCrystal = Color(0xFF4CE5FF)
+// Text & Neutrals (Dark)
+val SoftWhite = Color(0xFFF4F7FF)
+val MutedSlate = Color(0xFF93A3C6)
 
-// 3D Host Frame Tier Colors
-val FrameNewHostPrimary = Color(0xFFD8D6F0)
-val FrameNewHostSecondary = Color(0xFF8B8AA8)
-val FrameSilverPrimary = Color(0xFFE9EEF7)
-val FrameSilverSecondary = Color(0xFF8E9DB8)
-val FrameGoldPrimary = Color(0xFFFFD36E)
-val FrameGoldSecondary = Color(0xFFFF8E3C)
-val FrameDiamondPrimary = Color(0xFF5CE1FF)
-val FrameDiamondSecondary = Color(0xFF4169FF)
-val FramePlatinumPrimary = Color(0xFFE5ECFF)
-val FramePlatinumSecondary = Color(0xFFA08BFF)
-val FrameStarPrimary = Color(0xFFFFD36E)
-val FrameStarSecondary = Color(0xFFFF4FA3)
+// Light Mode Palette
+val LightBackground = Color(0xFFF3F6FC)
+val LightSurface = Color(0xFFFFFFFF)
+val LightCard = Color(0xFFE7EFFC)
+val LightBorder = Color(0xFFC9D8F0)
+val ElectricBlueDark = Color(0xFF006EE6)
+val NeonGreenDark = Color(0xFF00A854)
+val GoldenAmberDark = Color(0xFFC78D00)
+val DarkInk = Color(0xFF0B132B)
+val MutedInk = Color(0xFF566482)

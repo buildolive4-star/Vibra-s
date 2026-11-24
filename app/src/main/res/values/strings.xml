@@ -1,13 +1,13 @@
 <resources>
-    <string name="app_name">Vibra</string>
-    <string name="vibra_tagline">Luxury 3D Social Audio &amp; Video</string>
-    <string name="onboarding_title_1">Discover Amazing Hosts</string>
-    <string name="onboarding_desc_1">Explore verified creators framed in luminous 3D tiers, ready for private audio and HD video conversations.</string>
-    <string name="onboarding_title_2">Connect Through Audio &amp; Video</string>
-    <string name="onboarding_desc_2">Crystal-clear low-latency rooms with real-time wallet timers, interactive waveforms, and explicit recording consent.</string>
-    <string name="onboarding_title_3">Send Gifts &amp; Enjoy Conversations</string>
-    <string name="onboarding_desc_3">Celebrate every moment with 3D luxury gifts, instant chat media, and secure Indian UPI wallet recharges.</string>
+    <string name="app_name">BetZone X</string>
+    <string name="betzone_tagline">YOUR SPORTS. YOUR MOMENT.</string>
+    <string name="onboarding_title_1">Experience Every Moment.</string>
+    <string name="onboarding_desc_1">Discover live sports, matches and tournaments.</string>
+    <string name="onboarding_title_2">Predict. Compete. Achieve.</string>
+    <string name="onboarding_desc_2">Participate in exciting sports prediction challenges using virtual points.</string>
+    <string name="onboarding_title_3">Your Sports Universe.</string>
+    <string name="onboarding_desc_3">Follow your favourite teams and players.</string>
     <string name="sign_in_google_cta">Continue with Google</string>
-    <string name="privacy_screenshot_notice">Protected Session: Screenshot blocking (FLAG_SECURE) is active on this screen. Note: external cameras cannot be blocked by software.</string>
-    <string name="error_auth_required">Please sign in with Google to access Vibra.</string>
+    <string name="virtual_points_notice">Virtual Points Only: BetZone X is a sports entertainment and prediction game using virtual points with zero real-money wagering, deposits, or cash prizes.</string>
+    <string name="error_auth_required">Please sign in with Google to access BetZone X.</string>
 </resources>

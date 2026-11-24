@@ -1,6 +1,6 @@
 {
-  "name": "Vibra",
-  "description": "Premium 3D social audio and video calling platform with virtual gifts, host frames, wallet ledger, and admin controls.",
+  "name": "BetZone X",
+  "description": "Premium 3D sports entertainment, live match analytics, and virtual points prediction platform.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

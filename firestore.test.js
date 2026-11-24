@@ -8,14 +8,70 @@ const fs = require("node:fs");
 
 let testEnv;
 const PROJECT_ID = process.env.GCP_PROJECT || "demo-no-project";
-const ALICE_UID = "alice_123";
-const BOB_UID = "bob_456";
-const ADMIN_UID = "admin_789";
+const ALICE_UID = "alice_betzone_1";
+const BOB_UID = "bob_betzone_2";
 
-const [emulatorHost, emulatorPortStr] = (
-  process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8085"
-).split(":");
+const [emulatorHost, emulatorPortStr] = (process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8085").split(":");
 const emulatorPort = parseInt(emulatorPortStr, 10);
+
+function validProfile(uid, now) {
+  return {
+    userId: uid,
+    displayName: "Aarav Striker",
+    avatarKey: "cobalt_falcon",
+    phoneNumber: "+919876543210",
+    countryCode: "+91",
+    virtualPoints: 2500,
+    totalPredictions: 0,
+    correctPredictions: 0,
+    streakDays: 1,
+    favoriteSports: ["Cricket", "Football"],
+    favoriteTeams: ["Mumbai Titans", "Real Madrid"],
+    badges: ["ROOKIE_PREDICTOR"],
+    language: "English",
+    darkMode: true,
+    notificationsEnabled: true,
+    privacyPublicLeaderboard: true,
+    termsAccepted: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function validPrediction(uid, now) {
+  return {
+    userId: uid,
+    matchId: "ipl_mi_csk_01",
+    matchTitle: "Mumbai Titans vs Chennai Kings",
+    sport: "Cricket",
+    tournament: "IPL",
+    marketType: "Match Winner",
+    selectedPick: "Mumbai Titans",
+    stakePoints: 250,
+    multiplierX100: 185,
+    potentialRewardPoints: 462,
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function validLeaderboard(uid, now, publicVisible = true) {
+  return {
+    userId: uid,
+    displayName: "Aarav Striker",
+    avatarKey: "cobalt_falcon",
+    virtualPoints: 2500,
+    totalPredictions: 10,
+    correctPredictions: 7,
+    accuracyPct: 70,
+    badges: ["ROOKIE_PREDICTOR"],
+    periodBucket: "ALL",
+    publicVisible,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 before(async () => {
   const rules = fs.readFileSync("./firestore.rules", "utf8");
@@ -41,329 +97,150 @@ beforeEach(async () => {
   }
 });
 
-function adminContext() {
-  return testEnv.authenticatedContext(ADMIN_UID, {
-    email: "buildolive4@gmail.com",
-    email_verified: true,
-  });
-}
-
-test("Unauthenticated requests are denied across all collections", async () => {
+test("Unauthenticated users cannot read or write any BetZone X collections", async () => {
   const unauthDb = testEnv.unauthenticatedContext().firestore();
+  const now = new Date(Date.now() - 2000);
   await assertFails(unauthDb.collection("users").doc(ALICE_UID).get());
-  await assertFails(unauthDb.collection("hosts").get());
-  await assertFails(unauthDb.collection("wallets").doc(ALICE_UID).get());
-  await assertFails(unauthDb.collection("calls").where("participantUids", "array-contains", ALICE_UID).get());
+  await assertFails(unauthDb.collection("users").doc(ALICE_UID).set(validProfile(ALICE_UID, now)));
+  await assertFails(unauthDb.collection("leaderboard_entries").where("publicVisible", "==", true).get());
 });
 
-test("User profile enforces PII isolation, role escalation guard, and partial update", async () => {
+test("User profile enforces strict PII isolation, shadow field rejection, and partial updates", async () => {
   const aliceDb = testEnv.authenticatedContext(ALICE_UID).firestore();
   const bobDb = testEnv.authenticatedContext(BOB_UID).firestore();
-  const past = new Date(Date.now() - 5000);
+  const created = new Date(Date.now() - 10000);
 
-  // Regular user cannot self-assign ADMIN role
-  await assertFails(
-    aliceDb.collection("users").doc(ALICE_UID).set({
-      userId: ALICE_UID,
-      displayName: "Alice",
-      role: "ADMIN",
-      accountStatus: "ACTIVE",
-      termsAccepted: true,
-      createdAt: past,
-      updatedAt: past,
-    })
-  );
-
-  // Valid CALLER profile creation (no @DocumentId `id` key)
-  await assertSucceeds(
-    aliceDb.collection("users").doc(ALICE_UID).set({
-      userId: ALICE_UID,
-      displayName: "Alice",
-      phoneNumber: "9876543210",
-      countryCode: "+91",
-      language: "English",
-      role: "CALLER",
-      accountStatus: "ACTIVE",
-      termsAccepted: true,
-      createdAt: past,
-      updatedAt: past,
-    })
-  );
-
-  // Partial profile update succeeds
+  await assertSucceeds(aliceDb.collection("users").doc(ALICE_UID).set(validProfile(ALICE_UID, created)));
   await assertSucceeds(
     aliceDb.collection("users").doc(ALICE_UID).update({
-      displayName: "Alice V",
+      darkMode: false,
+      language: "Hindi",
       updatedAt: new Date(Date.now() - 1000),
     })
   );
 
-  // Bob cannot read or list Alice's private PII profile
+  // Cross-user PII read/write blocked
   await assertFails(bobDb.collection("users").doc(ALICE_UID).get());
-  await assertFails(bobDb.collection("users").get());
-});
+  await assertFails(bobDb.collection("users").doc(ALICE_UID).update({ virtualPoints: 999999, updatedAt: new Date(Date.now() - 1000) }));
 
-test("Email spoofing with email_verified=false does not grant admin access", async () => {
-  const spoofDb = testEnv.authenticatedContext("spoof_uid", {
-    email: "buildolive4@gmail.com",
-    email_verified: false,
-  }).firestore();
-
-  const past = new Date(Date.now() - 5000);
+  // Shadow field & @DocumentId id field & future timestamp rejected
   await assertFails(
-    spoofDb.collection("host_frames").doc("frame_star").set({
-      name: "STAR",
-      tier: "STAR",
-      accentHex: "#FFD36E",
-      secondaryHex: "#8B5CFF",
-      animationStyle: "PARTICLES",
-      active: true,
-      createdAt: past,
-      updatedAt: past,
-    })
-  );
-  await assertFails(spoofDb.collection("admin_audit_logs").get());
-});
-
-test("Host frames, call pricing, and salaries are strictly admin-controlled", async () => {
-  const aliceDb = testEnv.authenticatedContext(ALICE_UID).firestore();
-  const admDb = adminContext().firestore();
-  const past = new Date(Date.now() - 5000);
-
-  // Non-admin cannot create or alter host frames or pricing
-  await assertFails(
-    aliceDb.collection("host_frames").doc("frame_gold").set({
-      name: "GOLD",
-      tier: "GOLD",
-      accentHex: "#FFD36E",
-      secondaryHex: "#FF4FA3",
-      animationStyle: "SHIMMER",
-      active: true,
-      createdAt: past,
-      updatedAt: past,
-    })
-  );
-
-  await assertFails(
-    aliceDb.collection("app_settings").doc("pricing").set({
-      audioRatePerMin: 20,
-      videoRatePerMin: 60,
-      minBillingSeconds: 60,
-      billingIntervalSeconds: 60,
-      platformCommissionPct: 30,
-      hostSharePct: 70,
-      updatedAt: past,
-    })
-  );
-
-  // Verified admin succeeds
-  await assertSucceeds(
-    admDb.collection("host_frames").doc("frame_gold").set({
-      name: "GOLD",
-      tier: "GOLD",
-      accentHex: "#FFD36E",
-      secondaryHex: "#FF4FA3",
-      animationStyle: "SHIMMER",
-      active: true,
-      createdAt: past,
-      updatedAt: past,
-    })
-  );
-
-  await assertSucceeds(
-    admDb.collection("app_settings").doc("pricing").set({
-      audioRatePerMin: 20,
-      videoRatePerMin: 60,
-      minBillingSeconds: 60,
-      billingIntervalSeconds: 60,
-      platformCommissionPct: 30,
-      hostSharePct: 70,
-      updatedAt: past,
-    })
-  );
-
-  // Host created by admin; host owner cannot upgrade own frameTier or status
-  await assertSucceeds(
-    admDb.collection("hosts").doc("host_1").set({
-      ownerUid: BOB_UID,
-      hostCode: "VBR-H101",
-      name: "Aria Nova",
-      bio: "Crystal voice host",
-      avatarKey: "aurora",
-      frameTier: "SILVER",
-      status: "APPROVED",
-      onlineStatus: "ONLINE",
-      audioAvailable: true,
-      videoAvailable: true,
-      featuredHost: true,
-      popularHost: true,
-      newHost: false,
-      premiumTier: true,
-      audioRatePerMin: 20,
-      videoRatePerMin: 60,
-      rating: 4.9,
-      totalCalls: 12,
-      totalMinutes: 84,
-      createdAt: past,
-      updatedAt: past,
-    })
-  );
-
-  const bobDb = testEnv.authenticatedContext(BOB_UID).firestore();
-  await assertSucceeds(
-    bobDb.collection("hosts").doc("host_1").update({
-      onlineStatus: "BUSY",
+    aliceDb.collection("users").doc(ALICE_UID).update({
+      isAdmin: true,
       updatedAt: new Date(Date.now() - 1000),
     })
   );
   await assertFails(
-    bobDb.collection("hosts").doc("host_1").update({
-      frameTier: "STAR",
-      updatedAt: new Date(Date.now() - 1000),
-    })
-  );
-
-  // Host cannot create or modify salary payouts
-  await assertFails(
-    bobDb.collection("host_salaries").doc("sal_1").set({
-      hostId: "host_1",
-      hostOwnerUid: BOB_UID,
-      hostName: "Aria Nova",
-      periodLabel: "Nov 2026",
-      approvedAmountInr: 12000,
-      pendingAmountInr: 0,
-      paidAmountInr: 12000,
-      payoutMethod: "UPI",
-      status: "PAID",
-      createdAt: past,
-      updatedAt: past,
+    aliceDb.collection("users").doc(ALICE_UID).update({
+      createdAt: new Date(Date.now() - 500),
+      updatedAt: new Date(Date.now() - 500),
     })
   );
 });
 
-test("Wallet, payments, calls, chats, and consented recordings enforce ownership and query alignment", async () => {
+test("Predictions enforce ownership, terminal state locking, and forbid @DocumentId id key", async () => {
   const aliceDb = testEnv.authenticatedContext(ALICE_UID).firestore();
   const bobDb = testEnv.authenticatedContext(BOB_UID).firestore();
-  const past = new Date(Date.now() - 5000);
+  const created = new Date(Date.now() - 10000);
 
-  // Wallet initial creation must start at 0 for non-admin
+  await assertSucceeds(
+    aliceDb.collection("users").doc(ALICE_UID).collection("predictions").doc("pred_1").set(validPrediction(ALICE_UID, created))
+  );
+  await assertSucceeds(
+    aliceDb.collection("users").doc(ALICE_UID).collection("predictions").get()
+  );
+
+  // Settle ACTIVE -> WON succeeds
+  await assertSucceeds(
+    aliceDb.collection("users").doc(ALICE_UID).collection("predictions").doc("pred_1").update({
+      status: "WON",
+      resultSummary: "Mumbai Titans won by 18 runs",
+      updatedAt: new Date(Date.now() - 1000),
+    })
+  );
+
+  // Terminal state lock: WON cannot be re-settled or modified
   await assertFails(
-    aliceDb.collection("wallets").doc(ALICE_UID).set({
-      userId: ALICE_UID,
-      balanceCoins: 99999,
-      totalRechargedInr: 0,
-      totalSpentCoins: 0,
-      updatedAt: past,
-    })
-  );
-  await assertSucceeds(
-    aliceDb.collection("wallets").doc(ALICE_UID).set({
-      userId: ALICE_UID,
-      balanceCoins: 0,
-      totalRechargedInr: 0,
-      totalSpentCoins: 0,
-      updatedAt: past,
+    aliceDb.collection("users").doc(ALICE_UID).collection("predictions").doc("pred_1").update({
+      status: "LOST",
+      updatedAt: new Date(Date.now() - 500),
     })
   );
 
-  // Unfiltered query on wallet_transactions fails; filtered query succeeds
-  await assertFails(aliceDb.collection("wallet_transactions").get());
-  await assertSucceeds(
-    aliceDb.collection("wallet_transactions").where("userId", "==", ALICE_UID).get()
-  );
-
-  // Call session & participant-scoped list query
-  await assertSucceeds(
-    aliceDb.collection("calls").doc("call_1").set({
-      callerId: ALICE_UID,
-      callerName: "Alice",
-      hostId: "host_1",
-      hostOwnerUid: BOB_UID,
-      hostName: "Aria Nova",
-      callType: "AUDIO",
-      status: "ACTIVE",
-      ratePerMin: 20,
-      durationSeconds: 0,
-      billedCoins: 0,
-      hostEarnedCoins: 0,
-      platformCommissionCoins: 0,
-      networkQuality: "EXCELLENT",
-      callerConsentRecording: true,
-      hostConsentRecording: false,
-      recordingActive: false,
-      participantUids: [ALICE_UID, BOB_UID],
-      createdAt: past,
-      updatedAt: past,
-    })
-  );
-
-  await assertSucceeds(
-    bobDb.collection("calls").where("participantUids", "array-contains", BOB_UID).get()
-  );
-  await assertFails(bobDb.collection("calls").get());
-
-  // Consented recording requires BOTH callerConsented and hostConsented == true
+  // Cannot include @DocumentId `id` field or cross-user read
   await assertFails(
-    aliceDb.collection("consented_recordings").doc("rec_bad").set({
-      callId: "call_1",
-      callerId: ALICE_UID,
-      hostId: "host_1",
-      hostOwnerUid: BOB_UID,
-      callerConsented: true,
-      hostConsented: false,
-      durationSeconds: 60,
-      retentionDays: 30,
-      accessLogCount: 0,
-      status: "ACTIVE",
-      createdAt: past,
-      updatedAt: past,
+    aliceDb.collection("users").doc(ALICE_UID).collection("predictions").doc("pred_2").set({
+      id: "pred_2",
+      ...validPrediction(ALICE_UID, created),
     })
   );
+  await assertFails(bobDb.collection("users").doc(ALICE_UID).collection("predictions").get());
+});
+
+test("Reward claims and notifications enforce ownership and immutability", async () => {
+  const aliceDb = testEnv.authenticatedContext(ALICE_UID).firestore();
+  const created = new Date(Date.now() - 5000);
+
   await assertSucceeds(
-    aliceDb.collection("consented_recordings").doc("rec_ok").set({
-      callId: "call_1",
-      callerId: ALICE_UID,
-      hostId: "host_1",
-      hostOwnerUid: BOB_UID,
-      callerConsented: true,
-      hostConsented: true,
-      durationSeconds: 60,
-      retentionDays: 30,
-      accessLogCount: 0,
-      status: "ACTIVE",
-      createdAt: past,
-      updatedAt: past,
+    aliceDb.collection("users").doc(ALICE_UID).collection("rewards_claims").doc("daily_2026_11_24").set({
+      userId: ALICE_UID,
+      rewardType: "DAILY_LOGIN",
+      rewardKey: "daily_2026_11_24",
+      title: "Day 1 Check-in Bonus",
+      pointsAwarded: 150,
+      createdAt: created,
+    })
+  );
+  await assertFails(
+    aliceDb.collection("users").doc(ALICE_UID).collection("rewards_claims").doc("daily_2026_11_24").update({
+      pointsAwarded: 5000,
     })
   );
 
-  // Chat thread + denormalized participantUids message subcollection
   await assertSucceeds(
-    aliceDb.collection("chats").doc("chat_1").set({
-      participantUids: [ALICE_UID, BOB_UID],
-      callerId: ALICE_UID,
-      callerName: "Alice",
-      hostId: "host_1",
-      hostOwnerUid: BOB_UID,
-      hostName: "Aria Nova",
-      lastMessage: "Hello!",
-      createdAt: past,
-      updatedAt: past,
+    aliceDb.collection("users").doc(ALICE_UID).collection("notifications").doc("notif_1").set({
+      userId: ALICE_UID,
+      title: "Match Live",
+      body: "IPL clash is now live.",
+      category: "MATCH_LIVE",
+      matchId: "ipl_mi_csk_01",
+      unread: true,
+      createdAt: created,
+      updatedAt: created,
     })
   );
   await assertSucceeds(
-    aliceDb.collection("chats").doc("chat_1").collection("messages").doc("msg_1").set({
-      participantUids: [ALICE_UID, BOB_UID],
-      senderId: ALICE_UID,
-      senderName: "Alice",
-      text: "Hello!",
-      messageType: "TEXT",
-      deliveryStatus: "SENT",
-      createdAt: past,
+    aliceDb.collection("users").doc(ALICE_UID).collection("notifications").doc("notif_1").update({
+      unread: false,
+      updatedAt: new Date(Date.now() - 1000),
     })
   );
+});
+
+test("Leaderboard enforces filtered publicVisible query and prevents cross-user tampering", async () => {
+  const aliceDb = testEnv.authenticatedContext(ALICE_UID).firestore();
+  const bobDb = testEnv.authenticatedContext(BOB_UID).firestore();
+  const created = new Date(Date.now() - 10000);
+
   await assertSucceeds(
-    bobDb.collection("chats").doc("chat_1").collection("messages")
-      .where("participantUids", "array-contains", BOB_UID)
-      .get()
+    aliceDb.collection("leaderboard_entries").doc(ALICE_UID).set(validLeaderboard(ALICE_UID, created, true))
+  );
+  await assertSucceeds(
+    bobDb.collection("leaderboard_entries").doc(BOB_UID).set(validLeaderboard(BOB_UID, created, false))
+  );
+
+  // Filtered query matching Kotlin repository succeeds
+  await assertSucceeds(
+    bobDb.collection("leaderboard_entries").where("publicVisible", "==", true).get()
+  );
+
+  // Unfiltered list or private user get rejected
+  await assertFails(bobDb.collection("leaderboard_entries").get());
+  await assertFails(aliceDb.collection("leaderboard_entries").doc(BOB_UID).get());
+  await assertFails(
+    bobDb.collection("leaderboard_entries").doc(ALICE_UID).update({
+      virtualPoints: 10,
+      updatedAt: new Date(Date.now() - 1000),
+    })
   );
 });

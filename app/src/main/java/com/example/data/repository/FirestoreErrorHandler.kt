@@ -1,8 +1,7 @@
 package com.example.data.repository
 
 import android.util.Log
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
@@ -14,7 +13,7 @@ enum class OperationType(val value: String) {
     DELETE("delete"),
     LIST("list"),
     GET("get"),
-    WRITE("write"),
+    WRITE("write")
 }
 
 fun handleFirestoreError(
@@ -22,12 +21,17 @@ fun handleFirestoreError(
     operationType: OperationType,
     path: String?
 ): String {
-    val causes = generateSequence(exception) { it.cause }
+    val causes = generateSequence<Throwable>(exception) { it.cause }
     val rootError = causes.firstOrNull { it is FirebaseFirestoreException }
         ?: causes.firstOrNull { it !is CancellationException }
         ?: exception
 
-    val currentUser = Firebase.auth.currentUser
+    val auth = try {
+        FirebaseAuth.getInstance()
+    } catch (_: Exception) {
+        null
+    }
+    val currentUser = auth?.currentUser
 
     val providerInfoList = currentUser?.providerData?.map { provider ->
         JSONObject().apply {
@@ -54,12 +58,4 @@ fun handleFirestoreError(
     val jsonString = errorInfoJson.toString()
     Log.e("FirestoreError", "Firestore Error: $jsonString")
     return jsonString
-}
-
-fun Throwable.unwrapFirestoreMessage(fallback: String): String {
-    val firestoreError = generateSequence(this) { it.cause }
-        .filterIsInstance<FirebaseFirestoreException>()
-        .firstOrNull()
-    if (firestoreError == null && this is CancellationException) throw this
-    return (firestoreError ?: this).localizedMessage ?: fallback
 }

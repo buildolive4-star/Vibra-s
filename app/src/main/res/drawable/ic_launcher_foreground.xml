@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/img_vibra_launcher_fg"
+        android:drawable="@drawable/img_betzone_launcher_fg"
         android:gravity="center" />
 </layer-list>

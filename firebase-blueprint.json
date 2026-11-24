@@ -2,469 +2,169 @@
   "entities": {
     "UserProfile": {
       "title": "UserProfile",
-      "description": "Private authenticated user profile with phone number, language, and role.",
+      "description": "BetZone X user profile, virtual points balance, favourite sports/teams, and preferences.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID matching document ID." },
+        "displayName": { "type": "string", "description": "User display name." },
+        "avatarKey": { "type": "string", "description": "Selected avatar style key." },
+        "phoneNumber": { "type": "string", "description": "Optional verified mobile number." },
+        "countryCode": { "type": "string", "description": "Dialing country code e.g. +91." },
+        "virtualPoints": { "type": "integer", "description": "Virtual points balance (non-monetary)." },
+        "totalPredictions": { "type": "integer", "description": "Total predictions submitted." },
+        "correctPredictions": { "type": "integer", "description": "Correctly settled predictions." },
+        "streakDays": { "type": "integer", "description": "Consecutive daily check-in count." },
+        "favoriteSports": { "type": "array", "description": "Followed sports categories." },
+        "favoriteTeams": { "type": "array", "description": "Followed sports teams." },
+        "badges": { "type": "array", "description": "Earned achievement badge IDs." },
+        "language": { "type": "string", "description": "Selected UI language." },
+        "darkMode": { "type": "boolean", "description": "Whether dark mode is enabled." },
+        "notificationsEnabled": { "type": "boolean", "description": "Match & reward alert preference." },
+        "privacyPublicLeaderboard": { "type": "boolean", "description": "Whether user appears on public leaderboard." },
+        "termsAccepted": { "type": "boolean", "description": "Terms and virtual-points disclaimer acceptance." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "avatarKey",
+        "virtualPoints",
+        "totalPredictions",
+        "correctPredictions",
+        "streakDays",
+        "favoriteSports",
+        "favoriteTeams",
+        "badges",
+        "language",
+        "darkMode",
+        "notificationsEnabled",
+        "privacyPublicLeaderboard",
+        "termsAccepted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPrediction": {
+      "title": "UserPrediction",
+      "description": "A virtual-points prediction submitted by a user on a sports match.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
-        "displayName": { "type": "string" },
-        "phoneNumber": { "type": "string" },
-        "countryCode": { "type": "string" },
-        "photoUrl": { "type": "string" },
-        "language": { "type": "string" },
-        "role": { "type": "string", "enum": ["CALLER", "HOST", "ADMIN"] },
-        "accountStatus": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "BLOCKED"] },
-        "termsAccepted": { "type": "boolean" },
+        "matchId": { "type": "string" },
+        "matchTitle": { "type": "string" },
+        "sport": { "type": "string" },
+        "tournament": { "type": "string" },
+        "marketType": { "type": "string" },
+        "selectedPick": { "type": "string" },
+        "stakePoints": { "type": "integer" },
+        "multiplierX100": { "type": "integer" },
+        "potentialRewardPoints": { "type": "integer" },
+        "status": { "type": "string", "enum": ["ACTIVE", "WON", "LOST"] },
+        "resultSummary": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "displayName", "role", "accountStatus", "termsAccepted", "createdAt", "updatedAt"]
+      "required": [
+        "userId",
+        "matchId",
+        "matchTitle",
+        "sport",
+        "tournament",
+        "marketType",
+        "selectedPick",
+        "stakePoints",
+        "multiplierX100",
+        "potentialRewardPoints",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "AdminMarker": {
-      "title": "AdminMarker",
-      "description": "Admin role grant marker keyed by admin UID.",
-      "type": "object",
-      "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["uid", "email", "createdAt"]
-    },
-    "HostProfile": {
-      "title": "HostProfile",
-      "description": "Public non-PII host profile for discovery, frame tier, and call availability.",
-      "type": "object",
-      "properties": {
-        "ownerUid": { "type": "string" },
-        "hostCode": { "type": "string" },
-        "name": { "type": "string" },
-        "bio": { "type": "string" },
-        "avatarKey": { "type": "string" },
-        "frameTier": { "type": "string", "enum": ["NEW_HOST", "SILVER", "GOLD", "DIAMOND", "PLATINUM", "STAR"] },
-        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED", "SUSPENDED", "BLOCKED"] },
-        "onlineStatus": { "type": "string", "enum": ["ONLINE", "BUSY", "OFFLINE"] },
-        "audioAvailable": { "type": "boolean" },
-        "videoAvailable": { "type": "boolean" },
-        "featuredHost": { "type": "boolean" },
-        "popularHost": { "type": "boolean" },
-        "newHost": { "type": "boolean" },
-        "premiumTier": { "type": "boolean" },
-        "audioRatePerMin": { "type": "integer" },
-        "videoRatePerMin": { "type": "integer" },
-        "rating": { "type": "number" },
-        "totalCalls": { "type": "integer" },
-        "totalMinutes": { "type": "integer" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["ownerUid", "hostCode", "name", "frameTier", "status", "onlineStatus", "audioAvailable", "videoAvailable", "createdAt", "updatedAt"]
-    },
-    "HostFrame": {
-      "title": "HostFrame",
-      "description": "Admin-controlled 3D frame definition.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "tier": { "type": "string", "enum": ["NEW_HOST", "SILVER", "GOLD", "DIAMOND", "PLATINUM", "STAR"] },
-        "description": { "type": "string" },
-        "accentHex": { "type": "string" },
-        "secondaryHex": { "type": "string" },
-        "animationStyle": { "type": "string" },
-        "active": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "tier", "accentHex", "secondaryHex", "animationStyle", "active", "createdAt", "updatedAt"]
-    },
-    "Wallet": {
-      "title": "Wallet",
-      "description": "User coin wallet balance and totals.",
+    "RewardClaim": {
+      "title": "RewardClaim",
+      "description": "Record of virtual points claimed from daily login, challenges, or sports quizzes.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
-        "balanceCoins": { "type": "integer" },
-        "totalRechargedInr": { "type": "integer" },
-        "totalSpentCoins": { "type": "integer" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "balanceCoins", "totalRechargedInr", "totalSpentCoins", "updatedAt"]
-    },
-    "WalletTransaction": {
-      "title": "WalletTransaction",
-      "description": "Immutable wallet ledger entry.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "type": { "type": "string", "enum": ["RECHARGE", "AUDIO_CALL", "VIDEO_CALL", "GIFT", "REFUND", "ADMIN_ADJUSTMENT"] },
-        "amountCoins": { "type": "integer" },
-        "amountInr": { "type": "integer" },
-        "balanceAfter": { "type": "integer" },
-        "referenceId": { "type": "string" },
-        "status": { "type": "string", "enum": ["CONFIRMED", "PENDING", "REFUNDED"] },
-        "description": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "type", "amountCoins", "amountInr", "balanceAfter", "referenceId", "status", "description", "createdAt"]
-    },
-    "RechargePackage": {
-      "title": "RechargePackage",
-      "description": "Admin-configurable INR recharge package.",
-      "type": "object",
-      "properties": {
+        "rewardType": { "type": "string", "enum": ["DAILY_LOGIN", "WEEKLY_CHALLENGE", "SPORTS_QUIZ", "BADGE_BONUS"] },
+        "rewardKey": { "type": "string" },
         "title": { "type": "string" },
-        "amountInr": { "type": "integer" },
-        "coins": { "type": "integer" },
-        "bonusCoins": { "type": "integer" },
-        "badge": { "type": "string" },
-        "active": { "type": "boolean" },
-        "sortOrder": { "type": "integer" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["title", "amountInr", "coins", "bonusCoins", "active", "sortOrder", "createdAt", "updatedAt"]
-    },
-    "PaymentRecord": {
-      "title": "PaymentRecord",
-      "description": "Idempotent Indian payment gateway confirmation record.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "packageId": { "type": "string" },
-        "amountInr": { "type": "integer" },
-        "coinsCredited": { "type": "integer" },
-        "gateway": { "type": "string", "enum": ["RAZORPAY_UPI", "CASHFREE", "PHONEPE_UPI"] },
-        "gatewayRef": { "type": "string" },
-        "idempotencyKey": { "type": "string" },
-        "status": { "type": "string", "enum": ["INITIATED", "VERIFIED", "FAILED", "REFUNDED"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "packageId", "amountInr", "coinsCredited", "gateway", "gatewayRef", "idempotencyKey", "status", "createdAt", "updatedAt"]
-    },
-    "AppPricingSettings": {
-      "title": "AppPricingSettings",
-      "description": "Global admin-controlled call pricing and commission split.",
-      "type": "object",
-      "properties": {
-        "audioRatePerMin": { "type": "integer" },
-        "videoRatePerMin": { "type": "integer" },
-        "minBillingSeconds": { "type": "integer" },
-        "billingIntervalSeconds": { "type": "integer" },
-        "platformCommissionPct": { "type": "integer" },
-        "hostSharePct": { "type": "integer" },
-        "promoDiscountPct": { "type": "integer" },
-        "promoLabel": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["audioRatePerMin", "videoRatePerMin", "minBillingSeconds", "billingIntervalSeconds", "platformCommissionPct", "hostSharePct", "updatedAt"]
-    },
-    "VirtualGift": {
-      "title": "VirtualGift",
-      "description": "Luxury virtual gift catalog item.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "category": { "type": "string", "enum": ["LOVE", "FLOWERS", "ROYAL", "PREMIUM", "DIAMOND", "SPECIAL"] },
-        "coinPrice": { "type": "integer" },
-        "artKey": { "type": "string" },
-        "accentHex": { "type": "string" },
-        "animationType": { "type": "string" },
-        "active": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "category", "coinPrice", "artKey", "accentHex", "animationType", "active", "createdAt", "updatedAt"]
-    },
-    "GiftTransaction": {
-      "title": "GiftTransaction",
-      "description": "Gift purchase and host earning split transaction.",
-      "type": "object",
-      "properties": {
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "hostId": { "type": "string" },
-        "hostOwnerUid": { "type": "string" },
-        "hostName": { "type": "string" },
-        "giftId": { "type": "string" },
-        "giftName": { "type": "string" },
-        "coinPrice": { "type": "integer" },
-        "hostShareCoins": { "type": "integer" },
-        "platformCommissionCoins": { "type": "integer" },
-        "callId": { "type": "string" },
+        "pointsAwarded": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["senderId", "senderName", "hostId", "hostOwnerUid", "hostName", "giftId", "giftName", "coinPrice", "hostShareCoins", "platformCommissionCoins", "createdAt"]
+      "required": ["userId", "rewardType", "rewardKey", "title", "pointsAwarded", "createdAt"]
     },
-    "CallSession": {
-      "title": "CallSession",
-      "description": "Audio or video call session with billing and consent state.",
-      "type": "object",
-      "properties": {
-        "callerId": { "type": "string" },
-        "callerName": { "type": "string" },
-        "hostId": { "type": "string" },
-        "hostOwnerUid": { "type": "string" },
-        "hostName": { "type": "string" },
-        "callType": { "type": "string", "enum": ["AUDIO", "VIDEO"] },
-        "status": { "type": "string", "enum": ["RINGING", "ACTIVE", "COMPLETED", "MISSED", "REJECTED"] },
-        "ratePerMin": { "type": "integer" },
-        "durationSeconds": { "type": "integer" },
-        "billedCoins": { "type": "integer" },
-        "hostEarnedCoins": { "type": "integer" },
-        "platformCommissionCoins": { "type": "integer" },
-        "networkQuality": { "type": "string", "enum": ["EXCELLENT", "GOOD", "FAIR"] },
-        "callerConsentRecording": { "type": "boolean" },
-        "hostConsentRecording": { "type": "boolean" },
-        "recordingActive": { "type": "boolean" },
-        "participantUids": { "type": "array" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["callerId", "callerName", "hostId", "hostOwnerUid", "hostName", "callType", "status", "ratePerMin", "durationSeconds", "billedCoins", "hostEarnedCoins", "platformCommissionCoins", "networkQuality", "callerConsentRecording", "hostConsentRecording", "recordingActive", "participantUids", "createdAt", "updatedAt"]
-    },
-    "ChatThread": {
-      "title": "ChatThread",
-      "description": "Conversation thread between a caller and a host.",
-      "type": "object",
-      "properties": {
-        "participantUids": { "type": "array" },
-        "callerId": { "type": "string" },
-        "callerName": { "type": "string" },
-        "hostId": { "type": "string" },
-        "hostOwnerUid": { "type": "string" },
-        "hostName": { "type": "string" },
-        "lastMessage": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["participantUids", "callerId", "callerName", "hostId", "hostOwnerUid", "hostName", "lastMessage", "createdAt", "updatedAt"]
-    },
-    "ChatMessage": {
-      "title": "ChatMessage",
-      "description": "Chat message with denormalized participantUids.",
-      "type": "object",
-      "properties": {
-        "participantUids": { "type": "array" },
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "text": { "type": "string" },
-        "messageType": { "type": "string", "enum": ["TEXT", "GIF", "IMAGE", "GIFT"] },
-        "mediaLabel": { "type": "string" },
-        "giftId": { "type": "string" },
-        "deliveryStatus": { "type": "string", "enum": ["SENT", "DELIVERED", "READ"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["participantUids", "senderId", "senderName", "text", "messageType", "deliveryStatus", "createdAt"]
-    },
-    "HostEarning": {
-      "title": "HostEarning",
-      "description": "Host earning ledger item.",
-      "type": "object",
-      "properties": {
-        "hostId": { "type": "string" },
-        "hostOwnerUid": { "type": "string" },
-        "category": { "type": "string", "enum": ["AUDIO_CALL", "VIDEO_CALL", "GIFT", "ADJUSTMENT"] },
-        "grossCoins": { "type": "integer" },
-        "hostShareCoins": { "type": "integer" },
-        "platformCommissionCoins": { "type": "integer" },
-        "adjustmentCoins": { "type": "integer" },
-        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "PAID"] },
-        "referenceId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["hostId", "hostOwnerUid", "category", "grossCoins", "hostShareCoins", "platformCommissionCoins", "adjustmentCoins", "status", "referenceId", "createdAt", "updatedAt"]
-    },
-    "HostAttendance": {
-      "title": "HostAttendance",
-      "description": "Host daily shift attendance log.",
-      "type": "object",
-      "properties": {
-        "hostId": { "type": "string" },
-        "hostOwnerUid": { "type": "string" },
-        "hostName": { "type": "string" },
-        "status": { "type": "string", "enum": ["ONLINE", "OFFLINE"] },
-        "loginTimeLabel": { "type": "string" },
-        "logoutTimeLabel": { "type": "string" },
-        "workedMinutes": { "type": "integer" },
-        "dateKey": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["hostId", "hostOwnerUid", "hostName", "status", "loginTimeLabel", "workedMinutes", "dateKey", "createdAt", "updatedAt"]
-    },
-    "HostSalary": {
-      "title": "HostSalary",
-      "description": "Admin-managed host salary payout record.",
-      "type": "object",
-      "properties": {
-        "hostId": { "type": "string" },
-        "hostOwnerUid": { "type": "string" },
-        "hostName": { "type": "string" },
-        "periodLabel": { "type": "string" },
-        "approvedAmountInr": { "type": "integer" },
-        "pendingAmountInr": { "type": "integer" },
-        "paidAmountInr": { "type": "integer" },
-        "payoutMethod": { "type": "string", "enum": ["UPI", "BANK_TRANSFER"] },
-        "paymentReference": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "PROCESSING", "PAID", "FAILED"] },
-        "paidDateLabel": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["hostId", "hostOwnerUid", "hostName", "periodLabel", "approvedAmountInr", "pendingAmountInr", "paidAmountInr", "payoutMethod", "status", "createdAt", "updatedAt"]
-    },
-    "ConsentedRecording": {
-      "title": "ConsentedRecording",
-      "description": "Explicit dual-consent recording metadata and retention controls.",
-      "type": "object",
-      "properties": {
-        "callId": { "type": "string" },
-        "callerId": { "type": "string" },
-        "hostId": { "type": "string" },
-        "hostOwnerUid": { "type": "string" },
-        "callerConsented": { "type": "boolean" },
-        "hostConsented": { "type": "boolean" },
-        "durationSeconds": { "type": "integer" },
-        "retentionDays": { "type": "integer" },
-        "accessLogCount": { "type": "integer" },
-        "status": { "type": "string", "enum": ["ACTIVE", "DELETED"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["callId", "callerId", "hostId", "hostOwnerUid", "callerConsented", "hostConsented", "durationSeconds", "retentionDays", "accessLogCount", "status", "createdAt", "updatedAt"]
-    },
-    "Complaint": {
-      "title": "Complaint",
-      "description": "User report or block complaint submitted for admin review.",
-      "type": "object",
-      "properties": {
-        "reporterId": { "type": "string" },
-        "targetId": { "type": "string" },
-        "targetName": { "type": "string" },
-        "reason": { "type": "string" },
-        "details": { "type": "string" },
-        "actionType": { "type": "string", "enum": ["REPORT", "BLOCK"] },
-        "status": { "type": "string", "enum": ["OPEN", "UNDER_REVIEW", "RESOLVED", "DISMISSED"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["reporterId", "targetId", "targetName", "reason", "actionType", "status", "createdAt", "updatedAt"]
-    },
-    "AppNotification": {
-      "title": "AppNotification",
-      "description": "User or host notification item.",
+    "UserNotification": {
+      "title": "UserNotification",
+      "description": "Match, challenge, and achievement alerts for a user.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "title": { "type": "string" },
         "body": { "type": "string" },
-        "category": { "type": "string", "enum": ["CALL", "GIFT", "SALARY", "ADMIN", "SECURITY"] },
-        "readFlag": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "category": { "type": "string", "enum": ["MATCH_LIVE", "TEAM_ALERT", "RESULT", "CHALLENGE", "ACHIEVEMENT"] },
+        "matchId": { "type": "string" },
+        "unread": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "title", "body", "category", "readFlag", "createdAt"]
+      "required": ["userId", "title", "body", "category", "unread", "createdAt", "updatedAt"]
     },
-    "AdminAuditLog": {
-      "title": "AdminAuditLog",
-      "description": "Immutable admin security and financial audit log.",
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "PII-free public leaderboard projection for a BetZone X user.",
       "type": "object",
       "properties": {
-        "adminUid": { "type": "string" },
-        "adminEmail": { "type": "string" },
-        "action": { "type": "string" },
-        "targetCollection": { "type": "string" },
-        "targetId": { "type": "string" },
-        "summary": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatarKey": { "type": "string" },
+        "virtualPoints": { "type": "integer" },
+        "totalPredictions": { "type": "integer" },
+        "correctPredictions": { "type": "integer" },
+        "accuracyPct": { "type": "integer" },
+        "badges": { "type": "array" },
+        "periodBucket": { "type": "string", "enum": ["ALL", "DAILY", "WEEKLY", "MONTHLY"] },
+        "publicVisible": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["adminUid", "adminEmail", "action", "targetCollection", "targetId", "summary", "createdAt"]
+      "required": [
+        "userId",
+        "displayName",
+        "avatarKey",
+        "virtualPoints",
+        "totalPredictions",
+        "correctPredictions",
+        "accuracyPct",
+        "badges",
+        "periodBucket",
+        "publicVisible",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Private user account profiles isolated per userId."
+      "description": "Private user profile, virtual points wallet, and settings."
     },
-    "/admins/{adminUid}": {
-      "schema": { "$ref": "#/entities/AdminMarker" },
-      "description": "Authorized platform administrators."
+    "/users/{userId}/predictions/{predictionId}": {
+      "schema": { "$ref": "#/entities/UserPrediction" },
+      "description": "User virtual-points prediction entries and settlement history."
     },
-    "/hosts/{hostId}": {
-      "schema": { "$ref": "#/entities/HostProfile" },
-      "description": "Public non-PII host profiles for discovery and calling."
+    "/users/{userId}/rewards_claims/{claimId}": {
+      "schema": { "$ref": "#/entities/RewardClaim" },
+      "description": "User daily reward, weekly challenge, and quiz claims."
     },
-    "/host_frames/{frameId}": {
-      "schema": { "$ref": "#/entities/HostFrame" },
-      "description": "Admin-controlled host frame catalog."
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/UserNotification" },
+      "description": "User notifications for live matches, teams, and achievements."
     },
-    "/wallets/{userId}": {
-      "schema": { "$ref": "#/entities/Wallet" },
-      "description": "User wallet balances."
-    },
-    "/wallet_transactions/{txId}": {
-      "schema": { "$ref": "#/entities/WalletTransaction" },
-      "description": "Immutable wallet ledger entries."
-    },
-    "/recharge_packages/{packageId}": {
-      "schema": { "$ref": "#/entities/RechargePackage" },
-      "description": "Admin-configurable recharge coin packages."
-    },
-    "/payments/{paymentId}": {
-      "schema": { "$ref": "#/entities/PaymentRecord" },
-      "description": "Verified payment gateway transaction records."
-    },
-    "/app_settings/{settingId}": {
-      "schema": { "$ref": "#/entities/AppPricingSettings" },
-      "description": "Platform call pricing and commission settings."
-    },
-    "/gifts/{giftId}": {
-      "schema": { "$ref": "#/entities/VirtualGift" },
-      "description": "Admin-managed virtual gift catalog."
-    },
-    "/gift_transactions/{txId}": {
-      "schema": { "$ref": "#/entities/GiftTransaction" },
-      "description": "Virtual gift sending ledger."
-    },
-    "/calls/{callId}": {
-      "schema": { "$ref": "#/entities/CallSession" },
-      "description": "Audio and video call sessions."
-    },
-    "/chats/{chatId}": {
-      "schema": { "$ref": "#/entities/ChatThread" },
-      "description": "Direct messaging threads between callers and hosts."
-    },
-    "/chats/{chatId}/messages/{messageId}": {
-      "schema": { "$ref": "#/entities/ChatMessage" },
-      "description": "Chat messages with denormalized participantUids."
-    },
-    "/host_earnings/{earningId}": {
-      "schema": { "$ref": "#/entities/HostEarning" },
-      "description": "Host earning breakdown ledger."
-    },
-    "/host_attendance/{attendanceId}": {
-      "schema": { "$ref": "#/entities/HostAttendance" },
-      "description": "Host shift attendance records."
-    },
-    "/host_salaries/{salaryId}": {
-      "schema": { "$ref": "#/entities/HostSalary" },
-      "description": "Admin-controlled host salary payout ledger."
-    },
-    "/consented_recordings/{recId}": {
-      "schema": { "$ref": "#/entities/ConsentedRecording" },
-      "description": "Dual-consent call recording metadata."
-    },
-    "/complaints/{complaintId}": {
-      "schema": { "$ref": "#/entities/Complaint" },
-      "description": "User safety reports and block records."
-    },
-    "/notifications/{notificationId}": {
-      "schema": { "$ref": "#/entities/AppNotification" },
-      "description": "User and host notifications."
-    },
-    "/admin_audit_logs/{logId}": {
-      "schema": { "$ref": "#/entities/AdminAuditLog" },
-      "description": "Admin security and audit trail."
+    "/leaderboard_entries/{userId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "PII-free public leaderboard standings."
     }
   }
 }

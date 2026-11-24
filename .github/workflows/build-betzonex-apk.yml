@@ -1,4 +1,4 @@
-name: Build Vibra Android APK
+name: Build BetZone X Android APK
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build & Package Vibra APK
+    name: Build & Package BetZone X APK
     runs-on: ubuntu-latest
 
     steps:
@@ -36,12 +36,10 @@ jobs:
             yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
           fi
 
-          # Ensure .env exists for Secrets Gradle Plugin without manual setup
           if [ ! -f .env ] && [ -f .env.example ]; then
             cp .env.example .env
           fi
 
-          # Auto-restore debug.keystore (from GitHub secret if set, else committed base64, else fresh keytool)
           if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
             printf '%s' "$DEBUG_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > debug.keystore
             echo "Restored debug.keystore from DEBUG_KEYSTORE_BASE64 secret."
@@ -60,7 +58,6 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          # Auto-restore firebase_applet_config.xml if omitted on GitHub push
           if [ ! -f app/src/main/res/values/firebase_applet_config.xml ]; then
             mkdir -p app/src/main/res/values
             cat <<'EOF' > app/src/main/res/values/firebase_applet_config.xml
@@ -71,7 +68,6 @@ jobs:
           EOF
           fi
 
-          # Auto-restore app/google-services.json from secret (supports raw JSON or base64)
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             trimmed="$(printf '%s' "$GOOGLE_SERVICES_JSON" | sed 's/^[[:space:]]*//')"
             if [[ "$trimmed" == \{* ]]; then
@@ -82,7 +78,14 @@ jobs:
             python3 -c 'import json; json.load(open("app/google-services.json"))'
             echo "Restored and validated app/google-services.json from GOOGLE_SERVICES_JSON secret."
           elif [ ! -f app/google-services.json ]; then
-            echo "::warning::app/google-services.json not found in repo or secret; building with googleServices.missing.passthrough=true."
+            echo "::warning::app/google-services.json not found in repo or GOOGLE_SERVICES_JSON secret; injecting CI-only OAuth placeholder so APK compiles."
+            mkdir -p app/src/main/res/values
+            cat <<'EOF' > app/src/main/res/values/ci_fallback_oauth.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="default_web_client_id" translatable="false"></string>
+          </resources>
+          EOF
           fi
 
       - name: Set up Gradle 9.3.1
@@ -98,7 +101,7 @@ jobs:
             gradle :app:testDebugUnitTest --no-daemon
           fi
 
-      - name: Build Vibra APK
+      - name: Build BetZone X APK
         run: |
           if [ -x ./gradlew ]; then
             ./gradlew :app:assembleDebug --no-daemon
@@ -106,13 +109,13 @@ jobs:
             gradle :app:assembleDebug --no-daemon
           fi
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/Vibra-Android.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/BetZoneX-Android.apk
 
       - name: Upload Downloadable APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Vibra-Android-APK
-          path: dist/Vibra-Android.apk
+          name: BetZoneX-Android-APK
+          path: dist/BetZoneX-Android.apk
           retention-days: 30
 
       - name: Publish Direct Download APK to GitHub Releases
@@ -120,10 +123,10 @@ jobs:
         continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: vibra-latest
-          name: Vibra Android APK (Latest Build)
+          tag_name: betzonex-latest
+          name: BetZone X Android APK (Latest Build)
           body: |
-            Automated build of **Vibra** (Caller, Host Studio, and Admin Control Center).
-            Download `Vibra-Android.apk` below to install on Android.
-          files: dist/Vibra-Android.apk
+            Automated build of **BetZone X** (`com.aistudio.betzonex.krvmpx`).
+            Download `BetZoneX-Android.apk` below to install on Android.
+          files: dist/BetZoneX-Android.apk
           make_latest: true

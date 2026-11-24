@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Vibra"
+rootProject.name = "BetZone X"
 
 include(":app")
