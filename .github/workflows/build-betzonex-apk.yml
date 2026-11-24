@@ -75,7 +75,52 @@ jobs:
             else
               printf '%s' "$GOOGLE_SERVICES_JSON" | tr -d '[:space:]' | base64 -d > app/google-services.json
             fi
-            python3 -c 'import json; json.load(open("app/google-services.json"))'
+            SHA1_HEX="$(keytool -list -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android | awk -F'SHA-?1:[[:space:]]*' '/SHA-?1:/{gsub(/[:[:space:]]/, "", $2); print tolower($2); exit}')"
+            python3 - "$SHA1_HEX" <<'PYEOF'
+import json, sys
+
+sha1_hex = sys.argv[1].strip().lower()
+pkg = "com.aistudio.betzonex.krvmpx"
+path = "app/google-services.json"
+
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+clients = data.get("client", [])
+has_pkg = any(
+    c.get("client_info", {}).get("android_client_info", {}).get("package_name") == pkg
+    for c in clients
+)
+
+if not has_pkg and clients:
+    template = clients[0]
+    proj_num = data.get("project_info", {}).get("project_number", "")
+    web_clients = [oc for oc in template.get("oauth_client", []) if oc.get("client_type") == 3]
+    android_client = {
+        "client_id": f"{proj_num}-betzonex.apps.googleusercontent.com",
+        "client_type": 1,
+        "android_info": {
+            "package_name": pkg,
+            "certificate_hash": sha1_hex,
+        },
+    }
+    new_entry = {
+        "client_info": {
+            "mobilesdk_app_id": f"1:{proj_num}:android:cdd593f56fd5945ca02f41",
+            "android_client_info": {"package_name": pkg},
+        },
+        "oauth_client": [android_client] + web_clients,
+        "api_key": template.get("api_key", []),
+        "services": template.get("services", {}),
+    }
+    clients.insert(0, new_entry)
+    data["client"] = clients
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    print(f"Auto-registered {pkg} into app/google-services.json from existing Firebase project config.")
+else:
+    print(f"Verified {pkg} present in app/google-services.json.")
+PYEOF
             echo "Restored and validated app/google-services.json from GOOGLE_SERVICES_JSON secret."
           elif [ ! -f app/google-services.json ]; then
             echo "::warning::app/google-services.json not found in repo or GOOGLE_SERVICES_JSON secret; injecting CI-only OAuth placeholder so APK compiles."
