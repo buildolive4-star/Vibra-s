@@ -35,11 +35,11 @@ object MockSportsData {
     )
 
     val badgesCatalog: List<BadgeInfo> = listOf(
-        BadgeInfo("ROOKIE_PREDICTOR", "Arena Rookie", "Join BetZone X and enter the prediction arena.", 0),
+        BadgeInfo("ROOKIE_PREDICTOR", "Arena Rookie", "Join 777Bet and enter the prediction arena.", 0),
         BadgeInfo("FIRST_WIN", "Sharp Eye", "Lock in 1st accurate virtual-points call.", 1),
         BadgeInfo("HAT_TRICK", "Streak Strategist", "Submit 3 predictions across live sports.", 3),
         BadgeInfo("CENTURION", "Grand Analyst", "Reach 10 predictions with high consistency.", 10),
-        BadgeInfo("QUIZ_MASTER", "Sports Scholar", "Complete a BetZone X trivia challenge.", 0)
+        BadgeInfo("QUIZ_MASTER", "Sports Scholar", "Complete a 777Bet trivia challenge.", 0)
     )
 
     val weeklyChallenges: List<WeeklyChallenge> = listOf(

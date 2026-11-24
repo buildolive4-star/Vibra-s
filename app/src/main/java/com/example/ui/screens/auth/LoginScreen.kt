@@ -109,7 +109,7 @@ fun LoginScreen(
                 Animated3DFootballCanvas(sizeDp = 64.dp)
                 Column {
                     Text(
-                        text = "BETZONE X",
+                        text = "777BET",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.ExtraBold
@@ -448,9 +448,9 @@ fun LoginScreen(
             text = {
                 Text(
                     if (title == "Terms & Conditions") {
-                        "BetZone X uses Virtual Points (VP) solely for interactive sports entertainment, match predictions, quizzes, and leaderboard rankings. Virtual Points hold no cash value, cannot be deposited, traded, or withdrawn, and no real-money wagering occurs anywhere in this app."
+                        "777Bet uses Virtual Points (VP) solely for interactive sports entertainment, match predictions, quizzes, and leaderboard rankings. Virtual Points hold no cash value, cannot be deposited, traded, or withdrawn, and no real-money wagering occurs anywhere in this app."
                     } else {
-                        "BetZone X stores your display name, avatar, favourite sports/teams, prediction history, and optional verified mobile code privately in your user record. Only your non-PII public display name, avatar, virtual points, and prediction accuracy appear on the leaderboard if enabled in Settings."
+                        "777Bet stores your display name, avatar, favourite sports/teams, prediction history, and optional verified mobile code privately in your user record. Only your non-PII public display name, avatar, virtual points, and prediction accuracy appear on the leaderboard if enabled in Settings."
                     }
                 )
             },

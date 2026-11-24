@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "BetZone X"
+rootProject.name = "777Bet"
 
 include(":app")

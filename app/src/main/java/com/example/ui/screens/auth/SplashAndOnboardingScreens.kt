@@ -86,7 +86,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Animated3DFootballCanvas(sizeDp = 152.dp)
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "BETZONE X",
+                text = "777BET",
                 style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.ExtraBold
@@ -176,7 +176,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "BETZONE X",
+                    text = "777BET",
                     style = MaterialTheme.typography.titleLarge,
                     color = ext.electricBlue,
                     fontWeight = FontWeight.ExtraBold

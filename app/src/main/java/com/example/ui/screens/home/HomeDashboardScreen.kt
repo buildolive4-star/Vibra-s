@@ -123,7 +123,7 @@ fun HomeDashboardScreen(
                     }
                     Column {
                         Text(
-                            text = "BETZONE X",
+                            text = "777BET",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.ExtraBold

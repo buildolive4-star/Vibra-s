@@ -378,8 +378,8 @@ fun SettingsScreen(
                 SettingsActionRow(Icons.AutoMirrored.Filled.HelpOutline, "Help & Support", "FAQs, prediction scoring & account guide") {
                     infoDialogTitle = "Help & Support"
                 }
-                SettingsActionRow(Icons.Default.Info, "About Application", "BetZone X v1.0 • Build 2026") {
-                    infoDialogTitle = "About BetZone X"
+                SettingsActionRow(Icons.Default.Info, "About Application", "777Bet v1.0 • Build 2026") {
+                    infoDialogTitle = "About 777Bet"
                 }
             }
         }
@@ -471,9 +471,9 @@ fun SettingsScreen(
             text = {
                 Text(
                     when (title) {
-                        "Terms & Conditions" -> "BetZone X operates exclusively with Virtual Points (VP) for sports predictions, trivia quizzes, and social leaderboard competition. No real-money deposits, bets, or cashouts exist."
+                        "Terms & Conditions" -> "777Bet operates exclusively with Virtual Points (VP) for sports predictions, trivia quizzes, and social leaderboard competition. No real-money deposits, bets, or cashouts exist."
                         "Help & Support" -> "Earn 2,500 VP on sign-in, claim +250 VP daily rewards, complete weekly prediction challenges, and lock picks in the Prediction Centre. Accuracy % updates automatically as predictions settle."
-                        else -> "BetZone X — Premium 3D Sports Entertainment & Virtual Prediction Platform. Powered by Jetpack Compose & Firebase."
+                        else -> "777Bet — Premium 3D Sports Entertainment & Virtual Prediction Platform. Powered by Jetpack Compose & Firebase."
                     }
                 )
             },

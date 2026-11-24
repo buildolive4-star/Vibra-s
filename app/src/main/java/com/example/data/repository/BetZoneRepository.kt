@@ -49,7 +49,7 @@ class BetZoneRepository(private val db: FirebaseFirestore) {
 
     private fun sanitizeName(raw: String): String {
         val trimmed = raw.trim().take(40)
-        return if (trimmed.length >= 2) trimmed else "BetZone Player"
+        return if (trimmed.length >= 2) trimmed else "777Bet Player"
     }
 
     private fun <T> Flow<T>.handleFirestoreStream(uid: String, operation: OperationType, path: String): Flow<T> =

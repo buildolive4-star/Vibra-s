@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BetZone X</string>
+    <string name="app_name">777Bet</string>
     <string name="betzone_tagline">YOUR SPORTS. YOUR MOMENT.</string>
     <string name="onboarding_title_1">Experience Every Moment.</string>
     <string name="onboarding_desc_1">Discover live sports, matches and tournaments.</string>
@@ -8,6 +8,6 @@
     <string name="onboarding_title_3">Your Sports Universe.</string>
     <string name="onboarding_desc_3">Follow your favourite teams and players.</string>
     <string name="sign_in_google_cta">Continue with Google</string>
-    <string name="virtual_points_notice">Virtual Points Only: BetZone X is a sports entertainment and prediction game using virtual points with zero real-money wagering, deposits, or cash prizes.</string>
-    <string name="error_auth_required">Please sign in with Google to access BetZone X.</string>
+    <string name="virtual_points_notice">Virtual Points Only: 777Bet is a sports entertainment and prediction game using virtual points with zero real-money wagering, deposits, or cash prizes.</string>
+    <string name="error_auth_required">Please sign in with Google to access 777Bet.</string>
 </resources>
