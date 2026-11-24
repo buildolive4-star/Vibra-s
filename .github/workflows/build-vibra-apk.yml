@@ -1,0 +1,101 @@
+name: Build Vibra Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build & Package Vibra APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Accept Android SDK Licenses & Prepare Build Files
+        run: |
+          if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          fi
+
+          # Ensure .env exists for Secrets Gradle Plugin without manual GitHub secrets
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
+          fi
+
+          # Auto-restore debug.keystore from committed debug.keystore.base64
+          # so Google Sign-In SHA-1 matches Firebase automatically
+          if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
+            tr -d '\r\n' < debug.keystore.base64 | base64 -d > debug.keystore
+          elif [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          # Verify committed Firebase config files are present
+          test -f app/google-services.json
+          test -f app/src/main/res/values/firebase_applet_config.xml
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Run Unit & Robolectric Tests
+        run: |
+          if [ -x ./gradlew ]; then
+            ./gradlew :app:testDebugUnitTest --no-daemon
+          else
+            gradle :app:testDebugUnitTest --no-daemon
+          fi
+
+      - name: Build Vibra APK
+        run: |
+          if [ -x ./gradlew ]; then
+            ./gradlew :app:assembleDebug --no-daemon
+          else
+            gradle :app:assembleDebug --no-daemon
+          fi
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Vibra-Android.apk
+
+      - name: Upload Downloadable APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vibra-Android-APK
+          path: dist/Vibra-Android.apk
+          retention-days: 30
+
+      - name: Publish Direct Download APK to GitHub Releases
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: vibra-latest
+          name: Vibra Android APK (Latest Build)
+          body: |
+            Automated build of **Vibra** (Caller, Host Studio, and Admin Control Center).
+            - Firebase config (`google-services.json`, `firebase_applet_config.xml`) and signing keystore (`debug.keystore.base64`) are pre-configured automatically — no manual GitHub secrets required.
+            - Download `Vibra-Android.apk` below to install on Android.
+          files: dist/Vibra-Android.apk
+          make_latest: true

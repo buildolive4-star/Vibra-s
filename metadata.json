@@ -1,0 +1,6 @@
+{
+  "name": "Vibra",
+  "description": "Premium 3D social audio and video calling platform with virtual gifts, host frames, wallet ledger, and admin controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

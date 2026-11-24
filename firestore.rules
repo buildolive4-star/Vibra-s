@@ -1,0 +1,627 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        ('email' in request.auth.token &&
+         'email_verified' in request.auth.token &&
+         request.auth.token.email == 'buildolive4@gmail.com' &&
+         request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // --- VALIDATION HELPERS ---
+
+    function isValidUserProfile(data) {
+      return data.userId is string && isValidId(data.userId) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
+        data.role in ['CALLER', 'HOST', 'ADMIN'] &&
+        data.accountStatus in ['ACTIVE', 'SUSPENDED', 'BLOCKED'] &&
+        data.termsAccepted is bool &&
+        (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 24)) &&
+        (!('countryCode' in data) || (data.countryCode is string && data.countryCode.size() <= 8)) &&
+        (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+        (!('language' in data) || (data.language is string && data.language.size() <= 24)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdminMarker(data) {
+      return data.uid is string && isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidHostProfile(data) {
+      return data.ownerUid is string && isValidId(data.ownerUid) &&
+        data.hostCode is string && data.hostCode.size() >= 3 && data.hostCode.size() <= 24 &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 50 &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
+        (!('avatarKey' in data) || (data.avatarKey is string && data.avatarKey.size() <= 64)) &&
+        data.frameTier in ['NEW_HOST', 'SILVER', 'GOLD', 'DIAMOND', 'PLATINUM', 'STAR'] &&
+        data.status in ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED', 'BLOCKED'] &&
+        data.onlineStatus in ['ONLINE', 'BUSY', 'OFFLINE'] &&
+        data.audioAvailable is bool &&
+        data.videoAvailable is bool &&
+        (!('featuredHost' in data) || data.featuredHost is bool) &&
+        (!('popularHost' in data) || data.popularHost is bool) &&
+        (!('newHost' in data) || data.newHost is bool) &&
+        (!('premiumTier' in data) || data.premiumTier is bool) &&
+        (!('audioRatePerMin' in data) || (data.audioRatePerMin is int && data.audioRatePerMin >= 0 && data.audioRatePerMin <= 10000)) &&
+        (!('videoRatePerMin' in data) || (data.videoRatePerMin is int && data.videoRatePerMin >= 0 && data.videoRatePerMin <= 20000)) &&
+        (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
+        (!('totalCalls' in data) || (data.totalCalls is int && data.totalCalls >= 0)) &&
+        (!('totalMinutes' in data) || (data.totalMinutes is int && data.totalMinutes >= 0)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidHostFrame(data) {
+      return data.name is string && data.name.size() >= 2 && data.name.size() <= 40 &&
+        data.tier in ['NEW_HOST', 'SILVER', 'GOLD', 'DIAMOND', 'PLATINUM', 'STAR'] &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 200)) &&
+        data.accentHex is string && data.accentHex.size() <= 16 &&
+        data.secondaryHex is string && data.secondaryHex.size() <= 16 &&
+        data.animationStyle is string && data.animationStyle.size() <= 32 &&
+        data.active is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidWallet(data) {
+      return data.userId is string && isValidId(data.userId) &&
+        data.balanceCoins is int && data.balanceCoins >= 0 && data.balanceCoins <= 10000000 &&
+        data.totalRechargedInr is int && data.totalRechargedInr >= 0 &&
+        data.totalSpentCoins is int && data.totalSpentCoins >= 0 &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidWalletTransaction(data) {
+      return data.userId is string && isValidId(data.userId) &&
+        data.type in ['RECHARGE', 'AUDIO_CALL', 'VIDEO_CALL', 'GIFT', 'REFUND', 'ADMIN_ADJUSTMENT'] &&
+        data.amountCoins is int &&
+        data.amountInr is int && data.amountInr >= 0 &&
+        data.balanceAfter is int && data.balanceAfter >= 0 &&
+        data.referenceId is string && data.referenceId.size() >= 1 && data.referenceId.size() <= 128 &&
+        data.status in ['CONFIRMED', 'PENDING', 'REFUNDED'] &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 160 &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidRechargePackage(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 40 &&
+        data.amountInr is int && data.amountInr > 0 && data.amountInr <= 500000 &&
+        data.coins is int && data.coins > 0 &&
+        data.bonusCoins is int && data.bonusCoins >= 0 &&
+        (!('badge' in data) || (data.badge is string && data.badge.size() <= 24)) &&
+        data.active is bool &&
+        data.sortOrder is int && data.sortOrder >= 0 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPaymentRecord(data) {
+      return data.userId is string && isValidId(data.userId) &&
+        data.packageId is string && data.packageId.size() >= 1 && data.packageId.size() <= 128 &&
+        data.amountInr is int && data.amountInr > 0 &&
+        data.coinsCredited is int && data.coinsCredited > 0 &&
+        data.gateway in ['RAZORPAY_UPI', 'CASHFREE', 'PHONEPE_UPI'] &&
+        data.gatewayRef is string && data.gatewayRef.size() >= 3 && data.gatewayRef.size() <= 128 &&
+        data.idempotencyKey is string && data.idempotencyKey.size() >= 3 && data.idempotencyKey.size() <= 128 &&
+        data.status in ['INITIATED', 'VERIFIED', 'FAILED', 'REFUNDED'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAppPricingSettings(data) {
+      return data.audioRatePerMin is int && data.audioRatePerMin >= 1 && data.audioRatePerMin <= 10000 &&
+        data.videoRatePerMin is int && data.videoRatePerMin >= 1 && data.videoRatePerMin <= 20000 &&
+        data.minBillingSeconds is int && data.minBillingSeconds >= 1 && data.minBillingSeconds <= 600 &&
+        data.billingIntervalSeconds is int && data.billingIntervalSeconds >= 1 && data.billingIntervalSeconds <= 60 &&
+        data.platformCommissionPct is int && data.platformCommissionPct >= 0 && data.platformCommissionPct <= 90 &&
+        data.hostSharePct is int && data.hostSharePct >= 10 && data.hostSharePct <= 100 &&
+        (!('promoDiscountPct' in data) || (data.promoDiscountPct is int && data.promoDiscountPct >= 0 && data.promoDiscountPct <= 80)) &&
+        (!('promoLabel' in data) || (data.promoLabel is string && data.promoLabel.size() <= 60)) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidVirtualGift(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 40 &&
+        data.category in ['LOVE', 'FLOWERS', 'ROYAL', 'PREMIUM', 'DIAMOND', 'SPECIAL'] &&
+        data.coinPrice is int && data.coinPrice > 0 && data.coinPrice <= 1000000 &&
+        data.artKey is string && data.artKey.size() >= 1 && data.artKey.size() <= 40 &&
+        data.accentHex is string && data.accentHex.size() <= 16 &&
+        data.animationType is string && data.animationType.size() <= 32 &&
+        data.active is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGiftTransaction(data) {
+      return data.senderId is string && isValidId(data.senderId) &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 60 &&
+        data.hostId is string && isValidId(data.hostId) &&
+        data.hostOwnerUid is string && isValidId(data.hostOwnerUid) &&
+        data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 60 &&
+        data.giftId is string && isValidId(data.giftId) &&
+        data.giftName is string && data.giftName.size() >= 1 && data.giftName.size() <= 40 &&
+        data.coinPrice is int && data.coinPrice > 0 &&
+        data.hostShareCoins is int && data.hostShareCoins >= 0 &&
+        data.platformCommissionCoins is int && data.platformCommissionCoins >= 0 &&
+        (!('callId' in data) || (data.callId is string && data.callId.size() <= 128)) &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidCallSession(data) {
+      return data.callerId is string && isValidId(data.callerId) &&
+        data.callerName is string && data.callerName.size() >= 1 && data.callerName.size() <= 60 &&
+        data.hostId is string && isValidId(data.hostId) &&
+        data.hostOwnerUid is string && isValidId(data.hostOwnerUid) &&
+        data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 60 &&
+        data.callType in ['AUDIO', 'VIDEO'] &&
+        data.status in ['RINGING', 'ACTIVE', 'COMPLETED', 'MISSED', 'REJECTED'] &&
+        data.ratePerMin is int && data.ratePerMin > 0 &&
+        data.durationSeconds is int && data.durationSeconds >= 0 &&
+        data.billedCoins is int && data.billedCoins >= 0 &&
+        data.hostEarnedCoins is int && data.hostEarnedCoins >= 0 &&
+        data.platformCommissionCoins is int && data.platformCommissionCoins >= 0 &&
+        data.networkQuality in ['EXCELLENT', 'GOOD', 'FAIR'] &&
+        data.callerConsentRecording is bool &&
+        data.hostConsentRecording is bool &&
+        data.recordingActive is bool &&
+        data.participantUids is list && data.participantUids.size() >= 1 && data.participantUids.size() <= 2 &&
+        (data.participantUids.size() == 0 || data.participantUids[0] is string) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidChatThread(data) {
+      return data.participantUids is list && data.participantUids.size() == 2 &&
+        data.participantUids[0] is string &&
+        data.callerId is string && isValidId(data.callerId) &&
+        data.callerName is string && data.callerName.size() >= 1 && data.callerName.size() <= 60 &&
+        data.hostId is string && isValidId(data.hostId) &&
+        data.hostOwnerUid is string && isValidId(data.hostOwnerUid) &&
+        data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 60 &&
+        data.lastMessage is string && data.lastMessage.size() <= 300 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidChatMessage(data) {
+      return data.participantUids is list && data.participantUids.size() == 2 &&
+        data.participantUids[0] is string &&
+        data.senderId is string && isValidId(data.senderId) &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 60 &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 1000 &&
+        data.messageType in ['TEXT', 'GIF', 'IMAGE', 'GIFT'] &&
+        (!('mediaLabel' in data) || (data.mediaLabel is string && data.mediaLabel.size() <= 120)) &&
+        (!('giftId' in data) || (data.giftId is string && data.giftId.size() <= 128)) &&
+        data.deliveryStatus in ['SENT', 'DELIVERED', 'READ'] &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidHostEarning(data) {
+      return data.hostId is string && isValidId(data.hostId) &&
+        data.hostOwnerUid is string && isValidId(data.hostOwnerUid) &&
+        data.category in ['AUDIO_CALL', 'VIDEO_CALL', 'GIFT', 'ADJUSTMENT'] &&
+        data.grossCoins is int &&
+        data.hostShareCoins is int &&
+        data.platformCommissionCoins is int &&
+        data.adjustmentCoins is int &&
+        data.status in ['PENDING', 'APPROVED', 'PAID'] &&
+        data.referenceId is string && data.referenceId.size() >= 1 && data.referenceId.size() <= 128 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidHostAttendance(data) {
+      return data.hostId is string && isValidId(data.hostId) &&
+        data.hostOwnerUid is string && isValidId(data.hostOwnerUid) &&
+        data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 60 &&
+        data.status in ['ONLINE', 'OFFLINE'] &&
+        data.loginTimeLabel is string && data.loginTimeLabel.size() >= 1 && data.loginTimeLabel.size() <= 40 &&
+        (!('logoutTimeLabel' in data) || (data.logoutTimeLabel is string && data.logoutTimeLabel.size() <= 40)) &&
+        data.workedMinutes is int && data.workedMinutes >= 0 &&
+        data.dateKey is string && data.dateKey.size() >= 4 && data.dateKey.size() <= 24 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidHostSalary(data) {
+      return data.hostId is string && isValidId(data.hostId) &&
+        data.hostOwnerUid is string && isValidId(data.hostOwnerUid) &&
+        data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 60 &&
+        data.periodLabel is string && data.periodLabel.size() >= 1 && data.periodLabel.size() <= 40 &&
+        data.approvedAmountInr is int && data.approvedAmountInr >= 0 &&
+        data.pendingAmountInr is int && data.pendingAmountInr >= 0 &&
+        data.paidAmountInr is int && data.paidAmountInr >= 0 &&
+        data.payoutMethod in ['UPI', 'BANK_TRANSFER'] &&
+        (!('paymentReference' in data) || (data.paymentReference is string && data.paymentReference.size() <= 100)) &&
+        data.status in ['PENDING', 'APPROVED', 'PROCESSING', 'PAID', 'FAILED'] &&
+        (!('paidDateLabel' in data) || (data.paidDateLabel is string && data.paidDateLabel.size() <= 40)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidConsentedRecording(data) {
+      return data.callId is string && isValidId(data.callId) &&
+        data.callerId is string && isValidId(data.callerId) &&
+        data.hostId is string && isValidId(data.hostId) &&
+        data.hostOwnerUid is string && isValidId(data.hostOwnerUid) &&
+        data.callerConsented == true &&
+        data.hostConsented == true &&
+        data.durationSeconds is int && data.durationSeconds >= 0 &&
+        data.retentionDays is int && data.retentionDays >= 1 && data.retentionDays <= 365 &&
+        data.accessLogCount is int && data.accessLogCount >= 0 &&
+        data.status in ['ACTIVE', 'DELETED'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidComplaint(data) {
+      return data.reporterId is string && isValidId(data.reporterId) &&
+        data.targetId is string && isValidId(data.targetId) &&
+        data.targetName is string && data.targetName.size() >= 1 && data.targetName.size() <= 60 &&
+        data.reason is string && data.reason.size() >= 2 && data.reason.size() <= 80 &&
+        (!('details' in data) || (data.details is string && data.details.size() <= 400)) &&
+        data.actionType in ['REPORT', 'BLOCK'] &&
+        data.status in ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'DISMISSED'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNotification(data) {
+      return data.userId is string && isValidId(data.userId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 80 &&
+        data.body is string && data.body.size() >= 1 && data.body.size() <= 300 &&
+        data.category in ['CALL', 'GIFT', 'SALARY', 'ADMIN', 'SECURITY'] &&
+        data.readFlag is bool &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAdminAuditLog(data) {
+      return data.adminUid is string && isValidId(data.adminUid) &&
+        data.adminEmail is string && data.adminEmail.size() >= 3 && data.adminEmail.size() <= 120 &&
+        data.action is string && data.action.size() >= 2 && data.action.size() <= 80 &&
+        data.targetCollection is string && data.targetCollection.size() >= 2 && data.targetCollection.size() <= 60 &&
+        data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+        data.summary is string && data.summary.size() >= 2 && data.summary.size() <= 300 &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    // --- COLLECTION RULES ---
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isSignedIn() && isValidUserProfile(incoming()) &&
+        incoming().keys().hasAll(['userId', 'displayName', 'role', 'accountStatus', 'termsAccepted', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'displayName', 'phoneNumber', 'countryCode', 'photoUrl', 'language', 'role', 'accountStatus', 'termsAccepted', 'createdAt', 'updatedAt']) &&
+        (
+          (isOwner(userId) && incoming().userId == request.auth.uid && incoming().role == 'CALLER' && incoming().accountStatus == 'ACTIVE') ||
+          isAdmin()
+        );
+      allow update: if isValidId(userId) && isSignedIn() && isValidUserProfile(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (isOwner(userId) &&
+            incoming().role == existing().role &&
+            incoming().accountStatus == existing().accountStatus &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phoneNumber', 'countryCode', 'photoUrl', 'language', 'termsAccepted', 'updatedAt']))
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isOwner(adminUid) || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isValidId(adminUid) && isAdmin() && isValidAdminMarker(incoming());
+      allow delete: if isValidId(adminUid) && isAdmin();
+    }
+
+    match /hosts/{hostId} {
+      allow get: if isValidId(hostId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(hostId) && isSignedIn() && isValidHostProfile(incoming()) &&
+        incoming().keys().hasAll(['ownerUid', 'hostCode', 'name', 'frameTier', 'status', 'onlineStatus', 'audioAvailable', 'videoAvailable', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['ownerUid', 'hostCode', 'name', 'bio', 'avatarKey', 'frameTier', 'status', 'onlineStatus', 'audioAvailable', 'videoAvailable', 'featuredHost', 'popularHost', 'newHost', 'premiumTier', 'audioRatePerMin', 'videoRatePerMin', 'rating', 'totalCalls', 'totalMinutes', 'createdAt', 'updatedAt']) &&
+        (
+          isAdmin() ||
+          (incoming().ownerUid == request.auth.uid && incoming().frameTier == 'NEW_HOST' && incoming().status == 'PENDING')
+        );
+      allow update: if isValidId(hostId) && isSignedIn() && isValidHostProfile(incoming()) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (existing().ownerUid == request.auth.uid &&
+            incoming().frameTier == existing().frameTier &&
+            incoming().status == existing().status &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['onlineStatus', 'bio', 'audioAvailable', 'videoAvailable', 'updatedAt'])) ||
+          // Allow call counters update during call settlement while keeping frameTier/status/rates untouched
+          (incoming().frameTier == existing().frameTier &&
+            incoming().status == existing().status &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['totalCalls', 'totalMinutes', 'updatedAt']))
+        );
+      allow delete: if isValidId(hostId) && isAdmin();
+    }
+
+    match /host_frames/{frameId} {
+      allow get: if isValidId(frameId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(frameId) && isAdmin() && isValidHostFrame(incoming()) &&
+        incoming().keys().hasAll(['name', 'tier', 'accentHex', 'secondaryHex', 'animationStyle', 'active', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['name', 'tier', 'description', 'accentHex', 'secondaryHex', 'animationStyle', 'active', 'createdAt', 'updatedAt']);
+      allow update: if isValidId(frameId) && isAdmin() && isValidHostFrame(incoming()) &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(frameId) && isAdmin();
+    }
+
+    match /wallets/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isSignedIn() && isValidWallet(incoming()) &&
+        incoming().keys().hasAll(['userId', 'balanceCoins', 'totalRechargedInr', 'totalSpentCoins', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'balanceCoins', 'totalRechargedInr', 'totalSpentCoins', 'updatedAt']) &&
+        (
+          isAdmin() ||
+          (isOwner(userId) && incoming().userId == request.auth.uid && incoming().balanceCoins == 0)
+        );
+      allow update: if isValidId(userId) && isSignedIn() && isValidWallet(incoming()) &&
+        incoming().userId == existing().userId &&
+        (
+          isAdmin() ||
+          (isOwner(userId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['balanceCoins', 'totalRechargedInr', 'totalSpentCoins', 'updatedAt']))
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /wallet_transactions/{txId} {
+      allow get: if isValidId(txId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(txId) && isSignedIn() && isValidWalletTransaction(incoming()) &&
+        incoming().keys().hasAll(['userId', 'type', 'amountCoins', 'amountInr', 'balanceAfter', 'referenceId', 'status', 'description', 'createdAt']) &&
+        incoming().keys().hasOnly(['userId', 'type', 'amountCoins', 'amountInr', 'balanceAfter', 'referenceId', 'status', 'description', 'createdAt']) &&
+        (incoming().userId == request.auth.uid || isAdmin());
+      allow update, delete: if isValidId(txId) && isAdmin();
+    }
+
+    match /recharge_packages/{packageId} {
+      allow get: if isValidId(packageId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(packageId) && isAdmin() && isValidRechargePackage(incoming()) &&
+        incoming().keys().hasAll(['title', 'amountInr', 'coins', 'bonusCoins', 'active', 'sortOrder', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['title', 'amountInr', 'coins', 'bonusCoins', 'badge', 'active', 'sortOrder', 'createdAt', 'updatedAt']);
+      allow update: if isValidId(packageId) && isAdmin() && isValidRechargePackage(incoming()) &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(packageId) && isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(paymentId) && isSignedIn() && isValidPaymentRecord(incoming()) &&
+        incoming().keys().hasAll(['userId', 'packageId', 'amountInr', 'coinsCredited', 'gateway', 'gatewayRef', 'idempotencyKey', 'status', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'packageId', 'amountInr', 'coinsCredited', 'gateway', 'gatewayRef', 'idempotencyKey', 'status', 'createdAt', 'updatedAt']) &&
+        (
+          isAdmin() ||
+          (incoming().userId == request.auth.uid && incoming().status == 'INITIATED')
+        );
+      allow update: if isValidId(paymentId) && isSignedIn() && isValidPaymentRecord(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().idempotencyKey == existing().idempotencyKey &&
+        (
+          isAdmin() ||
+          (existing().userId == request.auth.uid &&
+            existing().status == 'INITIATED' &&
+            incoming().status in ['VERIFIED', 'FAILED'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'gatewayRef', 'updatedAt']))
+        );
+      allow delete: if isValidId(paymentId) && isAdmin();
+    }
+
+    match /app_settings/{settingId} {
+      allow get: if isValidId(settingId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(settingId) && isAdmin() && isValidAppPricingSettings(incoming());
+      allow delete: if isValidId(settingId) && isAdmin();
+    }
+
+    match /gifts/{giftId} {
+      allow get: if isValidId(giftId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(giftId) && isAdmin() && isValidVirtualGift(incoming()) &&
+        incoming().keys().hasAll(['name', 'category', 'coinPrice', 'artKey', 'accentHex', 'animationType', 'active', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['name', 'category', 'coinPrice', 'artKey', 'accentHex', 'animationType', 'active', 'createdAt', 'updatedAt']);
+      allow update: if isValidId(giftId) && isAdmin() && isValidVirtualGift(incoming()) &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(giftId) && isAdmin();
+    }
+
+    match /gift_transactions/{txId} {
+      allow get: if isValidId(txId) && isSignedIn() && (existing().senderId == request.auth.uid || existing().hostOwnerUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.hostOwnerUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(txId) && isSignedIn() && isValidGiftTransaction(incoming()) &&
+        incoming().keys().hasAll(['senderId', 'senderName', 'hostId', 'hostOwnerUid', 'hostName', 'giftId', 'giftName', 'coinPrice', 'hostShareCoins', 'platformCommissionCoins', 'createdAt']) &&
+        incoming().keys().hasOnly(['senderId', 'senderName', 'hostId', 'hostOwnerUid', 'hostName', 'giftId', 'giftName', 'coinPrice', 'hostShareCoins', 'platformCommissionCoins', 'callId', 'createdAt']) &&
+        (incoming().senderId == request.auth.uid || isAdmin());
+      allow update, delete: if isValidId(txId) && isAdmin();
+    }
+
+    match /calls/{callId} {
+      allow get: if isValidId(callId) && isSignedIn() && (request.auth.uid in existing().participantUids || isAdmin());
+      allow list: if isSignedIn() && (request.auth.uid in resource.data.participantUids || isAdmin());
+      allow create: if isValidId(callId) && isSignedIn() && isValidCallSession(incoming()) &&
+        incoming().keys().hasAll(['callerId', 'callerName', 'hostId', 'hostOwnerUid', 'hostName', 'callType', 'status', 'ratePerMin', 'durationSeconds', 'billedCoins', 'hostEarnedCoins', 'platformCommissionCoins', 'networkQuality', 'callerConsentRecording', 'hostConsentRecording', 'recordingActive', 'participantUids', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['callerId', 'callerName', 'hostId', 'hostOwnerUid', 'hostName', 'callType', 'status', 'ratePerMin', 'durationSeconds', 'billedCoins', 'hostEarnedCoins', 'platformCommissionCoins', 'networkQuality', 'callerConsentRecording', 'hostConsentRecording', 'recordingActive', 'participantUids', 'createdAt', 'updatedAt']) &&
+        (
+          isAdmin() ||
+          (incoming().callerId == request.auth.uid && request.auth.uid in incoming().participantUids)
+        );
+      allow update: if isValidId(callId) && isSignedIn() && isValidCallSession(incoming()) &&
+        incoming().callerId == existing().callerId &&
+        incoming().hostId == existing().hostId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (request.auth.uid in existing().participantUids &&
+            !(existing().status in ['COMPLETED', 'MISSED', 'REJECTED']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'durationSeconds', 'billedCoins', 'hostEarnedCoins', 'platformCommissionCoins', 'networkQuality', 'callerConsentRecording', 'hostConsentRecording', 'recordingActive', 'updatedAt']))
+        );
+      allow delete: if isValidId(callId) && isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow get: if isValidId(chatId) && isSignedIn() && (request.auth.uid in existing().participantUids || isAdmin());
+      allow list: if isSignedIn() && (request.auth.uid in resource.data.participantUids || isAdmin());
+      allow create: if isValidId(chatId) && isSignedIn() && isValidChatThread(incoming()) &&
+        incoming().keys().hasAll(['participantUids', 'callerId', 'callerName', 'hostId', 'hostOwnerUid', 'hostName', 'lastMessage', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['participantUids', 'callerId', 'callerName', 'hostId', 'hostOwnerUid', 'hostName', 'lastMessage', 'createdAt', 'updatedAt']) &&
+        (request.auth.uid in incoming().participantUids || isAdmin());
+      allow update: if isValidId(chatId) && isSignedIn() && isValidChatThread(incoming()) &&
+        incoming().callerId == existing().callerId &&
+        incoming().hostId == existing().hostId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (request.auth.uid in existing().participantUids &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['lastMessage', 'updatedAt']))
+        );
+      allow delete: if isValidId(chatId) && isAdmin();
+
+      match /messages/{messageId} {
+        allow get: if isValidId(chatId) && isValidId(messageId) && isSignedIn() && (request.auth.uid in existing().participantUids || isAdmin());
+        allow list: if isValidId(chatId) && isSignedIn() && (request.auth.uid in resource.data.participantUids || isAdmin());
+        allow create: if isValidId(chatId) && isValidId(messageId) && isSignedIn() && isValidChatMessage(incoming()) &&
+          incoming().keys().hasAll(['participantUids', 'senderId', 'senderName', 'text', 'messageType', 'deliveryStatus', 'createdAt']) &&
+          incoming().keys().hasOnly(['participantUids', 'senderId', 'senderName', 'text', 'messageType', 'mediaLabel', 'giftId', 'deliveryStatus', 'createdAt']) &&
+          (
+            isAdmin() ||
+            (incoming().senderId == request.auth.uid && request.auth.uid in incoming().participantUids)
+          );
+        allow update: if isValidId(chatId) && isValidId(messageId) && isSignedIn() && isValidChatMessage(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          (isAdmin() || (request.auth.uid in existing().participantUids && incoming().diff(existing()).affectedKeys().hasOnly(['deliveryStatus'])));
+        allow delete: if isValidId(chatId) && isValidId(messageId) && isAdmin();
+      }
+    }
+
+    match /host_earnings/{earningId} {
+      allow get: if isValidId(earningId) && isSignedIn() && (existing().hostOwnerUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.hostOwnerUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(earningId) && isSignedIn() && isValidHostEarning(incoming()) &&
+        incoming().keys().hasAll(['hostId', 'hostOwnerUid', 'category', 'grossCoins', 'hostShareCoins', 'platformCommissionCoins', 'adjustmentCoins', 'status', 'referenceId', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['hostId', 'hostOwnerUid', 'category', 'grossCoins', 'hostShareCoins', 'platformCommissionCoins', 'adjustmentCoins', 'status', 'referenceId', 'createdAt', 'updatedAt']) &&
+        (isAdmin() || (incoming().status == 'PENDING' && incoming().adjustmentCoins == 0));
+      allow update, delete: if isValidId(earningId) && isAdmin();
+    }
+
+    match /host_attendance/{attendanceId} {
+      allow get: if isValidId(attendanceId) && isSignedIn() && (existing().hostOwnerUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.hostOwnerUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(attendanceId) && isSignedIn() && isValidHostAttendance(incoming()) &&
+        (incoming().hostOwnerUid == request.auth.uid || isAdmin());
+      allow update: if isValidId(attendanceId) && isSignedIn() && isValidHostAttendance(incoming()) &&
+        incoming().hostOwnerUid == existing().hostOwnerUid &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (existing().hostOwnerUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'logoutTimeLabel', 'workedMinutes', 'updatedAt']))
+        );
+      allow delete: if isValidId(attendanceId) && isAdmin();
+    }
+
+    match /host_salaries/{salaryId} {
+      allow get: if isValidId(salaryId) && isSignedIn() && (existing().hostOwnerUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.hostOwnerUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(salaryId) && isAdmin() && isValidHostSalary(incoming());
+      allow update: if isValidId(salaryId) && isAdmin() && isValidHostSalary(incoming()) &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(salaryId) && isAdmin();
+    }
+
+    match /consented_recordings/{recId} {
+      allow get: if isValidId(recId) && isSignedIn() && (existing().callerId == request.auth.uid || existing().hostOwnerUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.callerId == request.auth.uid || resource.data.hostOwnerUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(recId) && isSignedIn() && isValidConsentedRecording(incoming()) &&
+        (incoming().callerId == request.auth.uid || incoming().hostOwnerUid == request.auth.uid || isAdmin());
+      allow update: if isValidId(recId) && isSignedIn() && isValidConsentedRecording(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        (isAdmin() || ((existing().callerId == request.auth.uid || existing().hostOwnerUid == request.auth.uid) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])));
+      allow delete: if isValidId(recId) && isAdmin();
+    }
+
+    match /complaints/{complaintId} {
+      allow get: if isValidId(complaintId) && isSignedIn() && (existing().reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.reporterId == request.auth.uid || isAdmin());
+      allow create: if isValidId(complaintId) && isSignedIn() && isValidComplaint(incoming()) &&
+        (
+          isAdmin() ||
+          (incoming().reporterId == request.auth.uid && incoming().status == 'OPEN')
+        );
+      allow update: if isValidId(complaintId) && isAdmin() && isValidComplaint(incoming()) &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(complaintId) && isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(notificationId) && isSignedIn() && isValidNotification(incoming()) &&
+        (incoming().userId == request.auth.uid || isAdmin());
+      allow update: if isValidId(notificationId) && isSignedIn() && isValidNotification(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (existing().userId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['readFlag']))
+        );
+      allow delete: if isValidId(notificationId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    match /admin_audit_logs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(logId) && isAdmin() && isValidAdminAuditLog(incoming());
+      allow update, delete: if false;
+    }
+  }
+}
