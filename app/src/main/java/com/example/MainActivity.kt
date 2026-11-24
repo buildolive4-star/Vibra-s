@@ -6,12 +6,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,6 +25,7 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -59,6 +63,7 @@ import com.example.data.repository.VibraAdminAndHostRepository
 import com.example.data.repository.VibraAuthRepository
 import com.example.data.repository.VibraCallAndChatRepository
 import com.example.data.repository.VibraPlatformRepository
+import com.example.ui.components.Glass3DCard
 import com.example.ui.components.VibraCosmicBackground
 import com.example.ui.screens.admin.AdminControlCenterScreen
 import com.example.ui.screens.auth.AuthScreen
@@ -88,6 +93,7 @@ import com.example.ui.viewmodel.VibraAdminViewModel
 import com.example.ui.viewmodel.VibraCallerViewModel
 import com.example.ui.viewmodel.VibraHostViewModel
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -131,6 +137,43 @@ fun VibraAppRoot() {
     val onboardingDone by prefs.onboardingCompleted.collectAsStateWithLifecycle(initialValue = true)
     val preferredMode by prefs.preferredMode.collectAsStateWithLifecycle(initialValue = AppMode.CALLER)
     val particlesEnabled by prefs.particlesEnabled.collectAsStateWithLifecycle(initialValue = true)
+
+    val firebaseReady = remember(context) {
+        FirebaseApp.getApps(context).isNotEmpty() || FirebaseApp.initializeApp(context) != null
+    }
+    if (!firebaseReady) {
+        VibraCosmicBackground {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Glass3DCard(
+                    cornerRadius = 24.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(22.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Firebase Config Required",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = SoftWhite
+                        )
+                        Text(
+                            text = "This APK was built without app/google-services.json. Export the APK directly from AI Studio or add GOOGLE_SERVICES_JSON in GitHub Secrets and re-run the workflow.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MutedLavender
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
 
     val currentUser by VibraAuthRepository.authStateFlow().collectAsStateWithLifecycle(
         initialValue = Firebase.auth.currentUser
